@@ -1,4 +1,4 @@
-//! Benchmarking setup for pallet-template
+//! Benchmarking setup for pallet-clubs
 
 use crate::{
 	pallet::Members, BalanceOf, Call, ClubDetails, ClubId, Clubs, Config, Event, MemberDetails,
