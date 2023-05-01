@@ -9,7 +9,7 @@ include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 use pallet_grandpa::AuthorityId as GrandpaId;
 use sp_api::impl_runtime_apis;
 use sp_consensus_aura::sr25519::AuthorityId as AuraId;
-use sp_core::{crypto::KeyTypeId, OpaqueMetadata};
+use sp_core::{crypto::KeyTypeId, ConstU16, OpaqueMetadata};
 use sp_runtime::{
 	create_runtime_str, generic, impl_opaque_keys,
 	traits::{
@@ -38,15 +38,14 @@ pub use frame_support::{
 	StorageValue,
 };
 pub use frame_system::Call as SystemCall;
+use frame_system::{EnsureRoot, EnsureSigned, EnsureSignedBy};
 pub use pallet_balances::Call as BalancesCall;
+use pallet_clubs::weights::NodeTplWeight;
 pub use pallet_timestamp::Call as TimestampCall;
 use pallet_transaction_payment::{ConstFeeMultiplier, CurrencyAdapter, Multiplier};
 #[cfg(any(feature = "std", test))]
 pub use sp_runtime::BuildStorage;
 pub use sp_runtime::{Perbill, Permill};
-
-/// Import the template pallet.
-pub use pallet_template;
 
 /// An index to a block.
 pub type BlockNumber = u32;
@@ -263,9 +262,22 @@ impl pallet_sudo::Config for Runtime {
 	type RuntimeCall = RuntimeCall;
 }
 
+parameter_types! {
+	pub const BlocksPerYear: BlockNumber = DAYS * 365;
+	pub const ClubCreationFee: Balance = 100;
+}
+
 /// Configure the pallet-template in pallets/template.
-impl pallet_template::Config for Runtime {
+impl pallet_clubs::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
+	type MaxNameLength = ConstU32<100>;
+	type MaxSubscriptionLength = ConstU16<100>;
+	type BlocksPerYear = BlocksPerYear;
+	type Currency = Balances;
+	type ClubCreationFee = ClubCreationFee;
+	// Anyone with positive balance can create clubs in this runtime for simplicity.
+	type RootOrigin = EnsureSigned<AccountId>;
+	type WeightInfo = NodeTplWeight<Self>;
 }
 
 // Create the runtime by composing the FRAME pallets that were previously configured.
@@ -283,8 +295,7 @@ construct_runtime!(
 		Balances: pallet_balances,
 		TransactionPayment: pallet_transaction_payment,
 		Sudo: pallet_sudo,
-		// Include the custom logic from the pallet-template in the runtime.
-		TemplateModule: pallet_template,
+		Clubs: pallet_clubs,
 	}
 );
 
@@ -331,7 +342,7 @@ mod benches {
 		[frame_system, SystemBench::<Runtime>]
 		[pallet_balances, Balances]
 		[pallet_timestamp, Timestamp]
-		[pallet_template, TemplateModule]
+		[pallet_clubs, Clubs]
 	);
 }
 
